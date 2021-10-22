@@ -1,0 +1,25 @@
+---
+{{- if .Values.ingress.enabled -}}
+{{- $serviceName := include "application.name" . -}}
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: {{ template "application.fullname" . }}
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  labels:
+    app: {{ template "application.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    owner: {{ .Values.ownerName }}
+spec:
+  rules:
+  - host: {{ .Release.Namespace }}{{ .Values.ingress.hostPrefix }}.reecenet.org
+    http:
+      paths:
+      - path: /test
+        backend:
+          serviceName: {{ template "application.fullname" . }}
+          servicePort: 80
+{{- end -}}

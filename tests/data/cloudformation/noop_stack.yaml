@@ -1,0 +1,12 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: A template that does nothing
+ 
+Conditions:
+  HasNot: !Equals [ 'true', 'false' ]
+ 
+# dummy resource, never created because of the Condition
+Resources:
+  NullResource:
+    Type: 'Custom::NullResource'
+    Condition: HasNot

@@ -1,0 +1,39 @@
+---
+apiVersion: reece.tech/v1alpha1
+kind: CloudformationDeployment
+metadata:
+  name: test-pipeline-cloudformation-stacks-{{ .Release.Namespace }}
+spec:
+  # Intention: these stacks get created in the order listed in this `stacks` list
+  # (and deleted in reverse order)
+  # If you want stacks to create in parallel, create multiple `CfnDeployment` resources
+  stacks:
+    - name: test-pipeline-stack-one-{{ .Release.Namespace }}
+      region: "ap-southeast-2"
+      template: |
+{{ required "noop_stack.yaml is not found" (.Files.Get "cloudformation/noop_stack.yaml") | indent 8 }}
+      {{- if .Values.cloudformation.stack_one.parameters }}
+      parameters:
+{{ toYaml .Values.cloudformation.stack_one.parameters | indent 8 }}
+      {{- end }}
+      {{- if .Values.cloudformation.stack_one.tags }}
+      tags:
+{{ toYaml .Values.cloudformation.stack_one.tags | indent 8 }}
+      {{- end }}
+      preserve_tags:
+        - '^Name$'
+
+    - name: test-pipeline-stack-two-{{ .Release.Namespace }}
+      region: "ap-southeast-2"
+      template: |
+{{ required "noop_stack.yaml is not found" (.Files.Get "cloudformation/noop_stack.yaml") | indent 8 }}
+      {{- if .Values.cloudformation.stack_two.parameters }}
+      parameters:
+{{ toYaml .Values.cloudformation.stack_two.parameters | indent 8 }}
+      {{- end }}
+      {{- if .Values.cloudformation.stack_two.tags }}
+      tags:
+{{ toYaml .Values.cloudformation.stack_two.tags | indent 8 }}
+      {{- end }}
+      preserve_tags:
+        - '^Name$'

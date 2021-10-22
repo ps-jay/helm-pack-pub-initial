@@ -32,7 +32,8 @@ fi
 cloudformation_dir="${INPUT_CLOUDFORMATION_DIR:-cloudformation}"
 if [[ -d "${cloudformation_dir}" ]] ; then
     echo "ℹ️ Cloudformation directory '${cloudformation_dir}' found, will package within the Helm chart tgz file"
-    ln -sf "../../${cloudformation_dir}" "${chart_dir}/cloudformation"
+    relative_path="$(realpath --relative-to="${chart_dir}" "${cloudformation_dir}")"
+    ln -sf "${relative_path}" "${chart_dir}/cloudformation"
 fi
 
 # Skip if testing (avoids multiple unneccessary docker pulls - speed up)
