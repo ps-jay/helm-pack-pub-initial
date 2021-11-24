@@ -1,10 +1,19 @@
 #!/bin/bash
 set -euo pipefail
 
-# https://stackoverflow.com/questions/59895/get-the-source-directory-of-a-bash-script-from-within-the-script-itself
-script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-# shellcheck source=shared.sh
-source "${script_dir}/shared.sh"
+input_error='false'
+
+name="${name:-}"
+if [[ -z "${name}" ]] ; then
+    echo "🛑 Input 'name' not provided" 1>&2
+    input_error='true'
+fi
+
+version="${version:-}"
+if [[ -z "${version}" ]] ; then
+    echo "🛑 Input 'version' not provided" 1>&2
+    input_error='true'
+fi
 
 if [[ "${input_error}" == 'true' ]] ; then
     exit 11
