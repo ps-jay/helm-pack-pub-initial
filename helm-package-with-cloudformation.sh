@@ -1,36 +1,27 @@
 #!/bin/bash
 set -euo pipefail
 
-helm_version='3.7.1'
-helm_image="alpine/helm:${helm_version}"
-docker_proxy="${INPUT_DOCKER_PROXY:-}"
-
-input_error='false'
-
-name="${INPUT_NAME:-}"
-if [[ -z "${name}" ]] ; then
-    echo "🛑 Input 'name' not provided" 1>&2
-    input_error='true'
-fi
-
-version="${INPUT_VERSION:-}"
-if [[ -z "${version}" ]] ; then
-    echo "🛑 Input 'version' not provided" 1>&2
-    input_error='true'
-fi
+# https://stackoverflow.com/questions/59895/get-the-source-directory-of-a-bash-script-from-within-the-script-itself
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+# shellcheck source=shared.sh
+source "${script_dir}/shared.sh"
 
 if [[ "${input_error}" == 'true' ]] ; then
     exit 11
 fi
 
-chart_dir="${INPUT_CHART_DIR:-helm/${name}}"
+helm_version="${helm_version:-3.7.1}"  # Update the default as newer versions are released
+helm_image="alpine/helm:${helm_version}"
+docker_proxy="${docker_proxy:-}"
+
+chart_dir="${chart_dir:-helm/${name}}"
 if [[ ! -d "${chart_dir}" ]] ; then
     echo "🛑 Chart directory '${chart_dir}' not found" 1>&2
     exit 13
 fi
 
-cloudformation_dir="${INPUT_CLOUDFORMATION_DIR:-cloudformation}"
-if [[ -d "${cloudformation_dir}" ]] ; then
+cloudformation_dir="${cloudformation_dir:-cloudformation}"
+if [[ -n "${cloudformation_dir}" && -d "${cloudformation_dir}" ]] ; then
     echo "ℹ️ Cloudformation directory '${cloudformation_dir}' found, will package within the Helm chart tgz file"
     relative_path="$(realpath --relative-to="${chart_dir}" "${cloudformation_dir}")"
     ln -sf "${relative_path}" "${chart_dir}/cloudformation"

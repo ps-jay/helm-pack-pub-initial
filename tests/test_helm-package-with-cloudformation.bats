@@ -33,8 +33,8 @@ function cleanup {
 @test "fails if chart dir does not exist" {
     cleanup
 
-    export INPUT_NAME=does_not_exist
-    export INPUT_VERSION=0.0.0
+    export name=does_not_exist
+    export version=0.0.0
 
     run ./helm-package-with-cloudformation.sh
 
@@ -46,9 +46,9 @@ function cleanup {
 @test "packages a chart without cloudformation" {
     cleanup
 
-    export INPUT_NAME=no-cfn
-    export INPUT_VERSION=1.0.0-test
-    export INPUT_CHART_DIR=tests/data/chart-no-cfn
+    export name=no-cfn
+    export version=1.0.0-test
+    export chart_dir=tests/data/chart-no-cfn
 
     run ./helm-package-with-cloudformation.sh
 
@@ -61,9 +61,9 @@ function cleanup {
 @test "fails if chart tgz isn't found" {
     cleanup
 
-    export INPUT_NAME=not-correct-name
-    export INPUT_VERSION=1.0.0-test
-    export INPUT_CHART_DIR=tests/data/chart-no-cfn
+    export name=not-correct-name
+    export version=1.0.0-test
+    export chart_dir=tests/data/chart-no-cfn
 
     run ./helm-package-with-cloudformation.sh
 
@@ -75,10 +75,10 @@ function cleanup {
 @test "packages a chart with cloudformation" {
     cleanup
 
-    export INPUT_NAME=with-cfn
-    export INPUT_VERSION=1.2.3-test
-    export INPUT_CHART_DIR=tests/data/chart-with-cfn
-    export INPUT_CLOUDFORMATION_DIR=tests/data/cloudformation
+    export name=with-cfn
+    export version=1.2.3-test
+    export chart_dir=tests/data/chart-with-cfn
+    export cloudformation_dir=tests/data/cloudformation
 
     run ./helm-package-with-cloudformation.sh
 
