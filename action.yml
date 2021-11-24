@@ -28,9 +28,35 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - id: vault-credentials
+      name: Obtain Vault credentials
+      uses: hashicorp/vault-action@v2.4.0
+      with:
+        url: https://vault.security-prod.reecenet.org/
+        role: ${{ github.repository_owner }}
+        method: jwt
+        path: github
+        exportToken: true
+        # until https://github.com/hashicorp/vault-action/issues/152 is implemented, look up _something_
+        secrets: /auth/token/lookup-self display_name | ignore
+    - id: artifactory-credentials
+      name: Obtain Artifactory credentials
+      shell: bash
+      # until `hashicorp/vault-action` supports secrets engines that need `write` we have to run our own script
+      run: ${{ github.action_path }}/artifactory-creds-from-vault.sh
     - id: package
-      run: ${{ github.action_path }}/helm-package-with-cloudformation.sh
+      name: Package a Helm Chart
       shell: bash
       env:
         name: ${{ inputs.name }}
         version: ${{ inputs.version }}
+      run: ${{ github.action_path }}/helm-package-with-cloudformation.sh
+    - id: publish
+      name: Publish a Helm Chart
+      shell: bash
+      env:
+        chart: ${{ steps.package.outputs.chart }}
+        version: ${{ inputs.version }}
+        username: ${{ steps.artifactory-credentials.outputs.username }}
+        password: ${{ steps.artifactory-credentials.outputs.password }}
+      run: ${{ github.action_path }}/helm-publish-to-artifactory.sh
