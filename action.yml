@@ -1,0 +1,36 @@
+---
+name: 'Reece specific Helm packaging, publishing and pinning'
+description: |
+  Packages a Helm chart - including Cloudformation templates if they exist, which is a reecetech specific thing to do.
+  Publishes the Helm chart to Artifactory, again following reecetech specific naming of Helm chart Artifactory
+  repositories - `helm-local` & `helm-local-stable`.
+  Pins the Helm chart version to a reecetech specific `kubernetes-configuration-files` repository commit ID.
+  Authentication for Artifactory and AWS is handled via OIDC integrations between GitHub and reecetech Vault & AWS
+  accounts.
+
+branding:
+  icon: plus
+  color: purple
+
+inputs:
+  name:
+    description: 'Name of the Helm chart'
+    required: true
+  version:
+    description: 'Version of the Helm chart'
+    required: true
+
+outputs:
+  chart:
+    description: 'The filename of the Helm chart produced'
+    value: ${{ steps.package.outputs.chart }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: package
+      run: ${{ github.action_path }}/helm-package-with-cloudformation.sh
+      shell: bash
+      env:
+        name: ${{ inputs.name }}
+        version: ${{ inputs.version }}
