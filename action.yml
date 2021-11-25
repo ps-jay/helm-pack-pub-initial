@@ -19,6 +19,33 @@ inputs:
   version:
     description: 'Version of the Helm chart'
     required: true
+  artifactory_creds_path:
+    description: 'Path to obtain Artifactory creds from Vault'
+    required: false
+    default: 'artifactory/token/common-pipeline'
+  artifactory_url:
+    description: 'Base URL to access Artifactory'
+    required: false
+    default: 'https://artifactory.reecenet.org/artifactory'
+  barnacle_region:
+    description: 'AWS region for the Barnacle DynamoDB table'
+    required: false
+    default: 'ap-southeast-2'
+  barnacle_role:
+    description: 'AWS role to assume to write to the Barnacle DynamoDB table'
+    required: true
+  stash_ad_creds_path:
+    description: 'Path to obtain Stash AD creds from Vault'
+    required: false
+    default: 'ad/creds/svc_prod_gh_stash'
+  stash_url:
+    description: 'Base URL to access Stash'
+    required: false
+    default: 'https://stash.reecenet.org'
+  vault_url:
+    description: 'Base URL to access Vault'
+    required: false
+    default: 'https://vault.security-prod.reecenet.org'
 
 outputs:
   chart:
@@ -28,31 +55,26 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - id: vars
-      name: Get Reece default values from GitHub secrets
-      shell: bash
-      run: ${{ github.action_path }}/get-default-reece-values.sh
-
     - id: vault
       name: Obtain Vault token and Stash credentials
       uses: hashicorp/vault-action@v2.4.0
       with:
-        url: ${{ steps.vars.outputs.vault_production }}
+        url: ${{ inputs.vault_url }}
         role: ${{ github.repository_owner }}
         method: jwt
         path: github
         exportToken: true  # get the Vault token as well, to be used in `artifactory-credentials`
         secrets: |
-          ${{ steps.vars.outputs.stash_ad_creds_path }} username | stash_ad_username ;
-          ${{ steps.vars.outputs.stash_ad_creds_path }} current_password | stash_ad_password
+          /${{ inputs.stash_ad_creds_path }} username | stash_ad_username ;
+          /${{ inputs.stash_ad_creds_path }} current_password | stash_ad_password
 
     - id: artifactory
       name: Obtain Artifactory credentials
       shell: bash
       env:
         token: ${{ env.VAULT_TOKEN }}
-        url: ${{ steps.vars.outputs.vault_production }}
-        path: ${{ steps.vars.outputs.artifactory_creds_path }}
+        url: ${{ inputs.vault_url }}
+        path: ${{ inputs.artifactory_creds_path }}
       # until `hashicorp/vault-action` supports secrets engines that need `write` we have to run our own script
       run: ${{ github.action_path }}/artifactory-creds-from-vault.sh
 
@@ -60,7 +82,7 @@ runs:
       name: Obtain a PAT to use with Stash
       uses: reecetech/bitbucket-server-pat-generator@fixup-input-var-use
       with:
-        base_url: ${{ steps.vars.outputs.stash_production }}
+        base_url: ${{ inputs.stash_url }}
         username: ${{ steps.vault.outputs.stash_ad_username }}
         password: ${{ steps.vault.outputs.stash_ad_password }}
 
@@ -78,7 +100,7 @@ runs:
       env:
         chart: ${{ steps.package.outputs.chart }}
         version: ${{ inputs.version }}
-        url: ${{ steps.vars.outputs.artifactory_production }}
+        url: ${{ inputs.artifactory_url }}
         username: ${{ steps.artifactory.outputs.username }}
         password: ${{ steps.artifactory.outputs.password }}
       run: ${{ github.action_path }}/helm-publish-to-artifactory.sh
@@ -87,5 +109,5 @@ runs:
       name: Obtain AWS keys
       uses: aws-actions/configure-aws-credentials@v1
       with:
-        role-to-assume: ${{ steps.vars.outputs.barnacle_role }}
-        aws-region: ${{ steps.vars.outputs.barnacle_region }}
+        role-to-assume: ${{ inputs.barnacle_role }}
+        aws-region: ${{ inputs.barnacle_region }}
