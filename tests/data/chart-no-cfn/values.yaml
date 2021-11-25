@@ -1,0 +1,31 @@
+---
+ingress:
+  enabled: true
+  hostPrefix: ".test"
+container:
+  imagePrefix: ""
+  imagePullPolicy: IfNotPresent
+  replicaCount: 1
+  health:
+    liveness:
+      initDelay: 3
+      path: /hello
+      timeout: 2
+      period: 30
+      successThreshold: 1
+      failureThreshold: 2
+    readiness:
+      initDelay: 3
+      path: /hello
+      timeout: 2
+      period: 30
+      successThreshold: 1
+      failureThreshold: 2
+ownerName: "testing"
+resources:
+  limits:
+    memory: 64Mi
+    cpu: 1.0
+  requests:
+    memory: 64Mi
+    cpu: 10m

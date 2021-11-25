@@ -1,0 +1,54 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "application.fullname" . }}
+  labels:
+    app: {{ template "application.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    owner: {{ .Values.ownerName }}
+spec:
+  replicas: {{ .Values.container.replicaCount }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: {{ template "application.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "application.name" . }}
+        release: {{ .Release.Name }}
+        owner: {{ .Values.ownerName }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configuration.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.container.imagePrefix }}{{ template "application.name" . }}:{{ .Chart.Version }}"
+          imagePullPolicy: {{ .Values.container.imagePullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ template "application.fullname" . }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.container.health.liveness.path }}
+              port: 5000
+            initialDelaySeconds: {{ .Values.container.health.liveness.initDelay }}
+            timeoutSeconds: {{ .Values.container.health.liveness.timeout }}
+            periodSeconds: {{ .Values.container.health.liveness.period }}
+            successThreshold: {{ .Values.container.health.liveness.successThreshold }}
+            failureThreshold: {{ .Values.container.health.liveness.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.container.health.readiness.path }}
+              port: 5000
+            initialDelaySeconds: {{ .Values.container.health.readiness.initDelay }}
+            timeoutSeconds: {{ .Values.container.health.readiness.timeout }}
+            periodSeconds: {{ .Values.container.health.readiness.period }}
+            successThreshold: {{ .Values.container.health.readiness.successThreshold }}
+            failureThreshold: {{ .Values.container.health.readiness.failureThreshold }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}

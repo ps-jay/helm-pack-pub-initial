@@ -1,0 +1,59 @@
+---
+name: Test and Release
+
+on:
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - '**'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@94e0aab03ca135d11a35e5bfc14e6746dc56e7e9
+        with:
+          check_together: 'yes'
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup bats
+        uses: mig4/setup-bats@af9a00deb21b5d795cabfeaa8d9060410377686d
+        with:
+          bats-version: 1.4.1
+
+      - name: Test
+        run: bats tests/*.bats
+
+  release:
+    needs:
+      - lint
+      - test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Get next version
+        uses: reecetech/version-increment@2021.10.5
+        id: version
+        with:
+          scheme: calver
+
+      - name: Release version
+        uses: marvinpinto/action-automatic-releases@919008cf3f741b179569b7a6fb4d8860689ab7f0
+        if: ${{ github.ref == 'refs/heads/main' }}  # Only on the `main` branch
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          draft: false
+          prerelease: false
+          automatic_release_tag: "${{ steps.version.outputs.version }}"
