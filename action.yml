@@ -19,6 +19,14 @@ inputs:
   version:
     description: 'Version of the Helm chart'
     required: true
+  vault_url:
+    description: 'URL to access Vault'
+    required: false
+    default: '${{ secrets.VAULT_PRODUCTION }}'
+  stash_ad_creds_path:
+    descrition: 'Path to the Stash AD creds in Vault'
+    required: false
+    default: '${{ inputs.STASH_AD_CREDS_PATH }}'
 
 outputs:
   chart:
@@ -28,22 +36,37 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - id: vault-credentials
-      name: Obtain Vault credentials
+    - id: vault
+      name: Obtain Vault token and Stash credentials
       uses: hashicorp/vault-action@v2.4.0
       with:
-        url: https://vault.security-prod.reecenet.org/
+        url: ${{ inputs.vault_url }}
         role: ${{ github.repository_owner }}
         method: jwt
         path: github
-        exportToken: true
-        # until https://github.com/hashicorp/vault-action/issues/152 is implemented, look up _something_
-        secrets: /auth/token/lookup-self display_name | ignore
-    - id: artifactory-credentials
+        exportToken: true  # get the Vault token as well, to be used in `artifactory-credentials`
+        secrets: |
+          ${{ inputs.stash_ad_creds_path }} username | stash_ad_username ;
+          ${{ inputs.stash_ad_creds_path }} current_password | stash_ad_password
+
+    - id: artifactory
       name: Obtain Artifactory credentials
       shell: bash
+      env:
+        token: ${{ secrets.VAULT_TOKEN }}
+        url: ${{ secrets.VAULT_PRODUCTION }}
+        path: ${{ secrets.ARTIFACTORY_CREDS_PATH }}
       # until `hashicorp/vault-action` supports secrets engines that need `write` we have to run our own script
       run: ${{ github.action_path }}/artifactory-creds-from-vault.sh
+
+    - id: stash
+      name: Obtain a PAT to use with Stash
+      uses: reecetech/bitbucket-server-pat-generator@fixup-input-var-use
+      with:
+        base_url: ${{ secrets.STASH_PRODUCTION }}
+        username: ${{ steps.vault.outputs.stash_ad_username }}
+        password: ${{ steps.vault.outputs.stash_ad_password }}
+
     - id: package
       name: Package a Helm Chart
       shell: bash
@@ -51,12 +74,21 @@ runs:
         name: ${{ inputs.name }}
         version: ${{ inputs.version }}
       run: ${{ github.action_path }}/helm-package-with-cloudformation.sh
+
     - id: publish
       name: Publish a Helm Chart
       shell: bash
       env:
         chart: ${{ steps.package.outputs.chart }}
         version: ${{ inputs.version }}
-        username: ${{ steps.artifactory-credentials.outputs.username }}
-        password: ${{ steps.artifactory-credentials.outputs.password }}
+        url: ${{ secrets.ARTIFACTORY_PRODUCTION }}
+        username: ${{ steps.artifactory.outputs.username }}
+        password: ${{ steps.artifactory.outputs.password }}
       run: ${{ github.action_path }}/helm-publish-to-artifactory.sh
+
+    - id: aws
+      name: Obtain AWS keys
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: ${{ secrets.BARNACLE_ROLE }}
+        aws-region: ${{ secrets.BARNACLE_REGION }}

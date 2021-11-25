@@ -15,6 +15,12 @@ if [[ -z "${version}" ]] ; then
     input_error='true'
 fi
 
+url="${url:-}"
+if [[ -z "${url}" ]] ; then
+    echo "🛑 Input 'url' not provided" 1>&2
+    input_error='true'
+fi
+
 username="${username:-}"
 if [[ -z "${username}" ]] ; then
     echo "🛑 Artifactory 'username' not provided" 1>&2
@@ -38,14 +44,15 @@ if [[ ! "${version}" =~ '-' ]] ; then
     repository='helm-local-stable'
 fi
 
-echo "ℹ️ Publishing Helm chart '${chart}' to Artifactory repository '${repository}'"
+echo "::group::🚢 Publishing Helm chart '${chart}' to Artifactory repository '${repository}'"
 
 checksum="$(md5sum "${chart}" | cut -d ' ' -f 1)"
 curl --fail --show-error --silent \
      -H "X-Checksum-MD5:${checksum}" \
      -u "${username}:${password}" \
      -T "${chart}" \
-     "https://artifactory.reecenet.org/artifactory/${repository}/${chart}"
+     "${url}/${repository}/${chart}"
 echo ""
 
 echo "ℹ️ Successfully published Helm chart '${chart}' to Artifactory repository '${repository}'"
+echo "::endgroup::"
